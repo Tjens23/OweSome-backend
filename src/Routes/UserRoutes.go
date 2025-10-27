@@ -7,4 +7,7 @@ import (
 
 func SetupUserRoutes(app *fiber.App) {
 	app.Get("/users", controllers.GetUsers)
+	app.Post("/users", controllers.CreateUser)
+	app.Patch("/users/update/:id", controllers.UpdateUser)
+	app.Delete("/users/delete/:id", controllers.DeleteUser)
 }
