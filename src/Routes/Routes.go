@@ -7,11 +7,27 @@ import (
 )
 
 func SetupRoutes(app *fiber.App) {
+	// User routes
 	app.Get("/users", controllers.GetUsers)
 	app.Post("/users", controllers.CreateUser)
 	app.Patch("/users/update/:id", controllers.UpdateUser)
 	app.Delete("/users/delete/:id", controllers.DeleteUser)
+	
+	// Auth routes
 	app.Post("/auth/login", controllers.Login)
 	app.Post("/auth/logout", controllers.Logout)
 	app.Get("/auth/user", middleware.IsAuth, controllers.GetUser)
+
+	// Group routes
+	app.Get("/groups", middleware.IsAuth, controllers.GetGroups)
+	app.Post("/groups", middleware.IsAuth, controllers.CreateGroup)
+	app.Patch("/groups/update/:id", middleware.IsAuth, controllers.UpdateGroup)
+	app.Delete("/groups/delete/:id", middleware.IsAuth, controllers.DeleteGroup)
+
+	// Expense routes
+	app.Post("/expenses", middleware.IsAuth, controllers.CreateExpense)
+	app.Get("/expenses", middleware.IsAuth, controllers.GetExpenses)
+	app.Get("/expenses/:id", middleware.IsAuth, controllers.GetExpense)
+	app.Patch("/expenses/update/:id", middleware.IsAuth, controllers.UpdateExpense)
+	app.Delete("/expenses/delete/:id", middleware.IsAuth, controllers.DeleteExpense)
 }
