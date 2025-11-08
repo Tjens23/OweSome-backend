@@ -19,6 +19,16 @@ type LoginInput struct {
 	Password string `json:"password"`
 }
 
+// @Summary User login
+// @Description Authenticate user with username and password
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param credentials body LoginInput true "Login credentials"
+// @Success 200 {object} map[string]interface{} "Login successful"
+// @Failure 400 {object} map[string]interface{} "Bad request"
+// @Failure 401 {object} map[string]interface{} "Invalid credentials"
+// @Router /auth/login [post]
 func Login(ctx fiber.Ctx) error {
 	input := new(LoginInput)
 	
@@ -69,6 +79,12 @@ func Login(ctx fiber.Ctx) error {
 	})
 }
 
+// @Summary User logout
+// @Description Logout user by clearing JWT cookie
+// @Tags auth
+// @Produce json
+// @Success 200 {object} map[string]interface{} "Logout successful"
+// @Router /auth/logout [post]
 func Logout(ctx fiber.Ctx) error {
 	
 	cookie := fiber.Cookie{
@@ -83,6 +99,14 @@ func Logout(ctx fiber.Ctx) error {
 	})
 }
 
+// @Summary Get current user
+// @Description Get current authenticated user information
+// @Tags auth
+// @Produce json
+// @Success 200 {object} models.User "User information"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Security ApiKeyAuth
+// @Router /auth/user [get]
 func GetUser(ctx fiber.Ctx) error {
 	cookie := ctx.Cookies("jwt")
 	

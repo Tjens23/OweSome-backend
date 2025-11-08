@@ -1,0 +1,453 @@
+basePath: /
+definitions:
+  controllers.CreateGroupInput:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      profile_image:
+        type: string
+    type: object
+  controllers.LoginInput:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  controllers.UpdateGroupInput:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      profile_image:
+        type: string
+    type: object
+  models.Expense:
+    properties:
+      amount:
+        type: number
+      createdAt:
+        type: string
+      description:
+        type: string
+      expenseShares:
+        items:
+          $ref: '#/definitions/models.ExpenseShare'
+        type: array
+      group:
+        $ref: '#/definitions/models.Group'
+      groupID:
+        type: integer
+      id:
+        type: integer
+      paidBy:
+        $ref: '#/definitions/models.User'
+      paidByID:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  models.ExpenseShare:
+    properties:
+      amountOwed:
+        type: number
+      expense:
+        $ref: '#/definitions/models.Expense'
+      expenseID:
+        type: integer
+      id:
+        type: integer
+      isPaid:
+        type: boolean
+      user:
+        $ref: '#/definitions/models.User'
+      userID:
+        type: integer
+    type: object
+  models.Group:
+    properties:
+      adminID:
+        type: integer
+      createdAt:
+        type: string
+      description:
+        type: string
+      expenses:
+        items:
+          $ref: '#/definitions/models.Expense'
+        type: array
+      groupAdmin:
+        $ref: '#/definitions/models.User'
+      id:
+        type: integer
+      members:
+        items:
+          $ref: '#/definitions/models.GroupMember'
+        type: array
+      name:
+        type: string
+      profileImage:
+        type: string
+      settlements:
+        items:
+          $ref: '#/definitions/models.Settlement'
+        type: array
+      updatedAt:
+        type: string
+    type: object
+  models.GroupMember:
+    properties:
+      group:
+        $ref: '#/definitions/models.Group'
+      groupID:
+        type: integer
+      id:
+        type: integer
+      isActive:
+        type: boolean
+      joinedAt:
+        type: string
+      user:
+        $ref: '#/definitions/models.User'
+      userID:
+        type: integer
+    type: object
+  models.Settlement:
+    properties:
+      amount:
+        type: number
+      createdAt:
+        type: string
+      group:
+        $ref: '#/definitions/models.Group'
+      groupID:
+        type: integer
+      id:
+        type: integer
+      isConfirmed:
+        type: boolean
+      payer:
+        $ref: '#/definitions/models.User'
+      payerID:
+        type: integer
+      receiver:
+        $ref: '#/definitions/models.User'
+      receiverID:
+        type: integer
+    type: object
+  models.User:
+    properties:
+      adminGroups:
+        items:
+          $ref: '#/definitions/models.Group'
+        type: array
+      createdAt:
+        type: string
+      email:
+        type: string
+      expenseShares:
+        items:
+          $ref: '#/definitions/models.ExpenseShare'
+        type: array
+      groupMemberships:
+        items:
+          $ref: '#/definitions/models.GroupMember'
+        type: array
+      id:
+        type: integer
+      paidExpenses:
+        items:
+          $ref: '#/definitions/models.Expense'
+        type: array
+      password:
+        type: string
+      paymentsMade:
+        items:
+          $ref: '#/definitions/models.Settlement'
+        type: array
+      paymentsReceived:
+        items:
+          $ref: '#/definitions/models.Settlement'
+        type: array
+      phone:
+        type: string
+      updatedAt:
+        type: string
+      username:
+        type: string
+    type: object
+host: localhost:3001
+info:
+  contact: {}
+  description: This is the backend API for the OweSome expense splitting application
+  title: OweSome Backend API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with username and password
+      parameters:
+      - description: Login credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.LoginInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Invalid credentials
+          schema:
+            additionalProperties: true
+            type: object
+      summary: User login
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      description: Logout user by clearing JWT cookie
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Logout successful
+          schema:
+            additionalProperties: true
+            type: object
+      summary: User logout
+      tags:
+      - auth
+  /auth/user:
+    get:
+      description: Get current authenticated user information
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User information
+          schema:
+            $ref: '#/definitions/models.User'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get current user
+      tags:
+      - auth
+  /groups:
+    get:
+      description: Get all groups where the authenticated user is a member
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of user groups
+          schema:
+            items:
+              $ref: '#/definitions/models.Group'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get user groups
+      tags:
+      - groups
+    post:
+      consumes:
+      - application/json
+      description: Create a new expense group with the authenticated user as admin
+      parameters:
+      - description: Group data
+        in: body
+        name: group
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreateGroupInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Group created successfully
+          schema:
+            $ref: '#/definitions/models.Group'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Create a new group
+      tags:
+      - groups
+  /groups/delete/{id}:
+    delete:
+      description: Delete a group and all associated data (only admin can delete)
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Group deleted successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden - Only admin can delete
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Group not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Delete a group
+      tags:
+      - groups
+  /groups/update/{id}:
+    patch:
+      consumes:
+      - application/json
+      description: Update group information (only admin can update)
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated group data
+        in: body
+        name: group
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateGroupInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Group updated successfully
+          schema:
+            $ref: '#/definitions/models.Group'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden - Only admin can update
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Group not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update a group
+      tags:
+      - groups
+  /users:
+    get:
+      description: Get list of all users
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of users
+          schema:
+            items:
+              $ref: '#/definitions/models.User'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all users
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account
+      parameters:
+      - description: User data
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User created successfully
+          schema:
+            $ref: '#/definitions/models.User'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new user
+      tags:
+      - users
+securityDefinitions:
+  ApiKeyAuth:
+    in: cookie
+    name: jwt
+    type: apiKey
+swagger: "2.0"

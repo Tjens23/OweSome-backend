@@ -7,6 +7,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// @Summary Get all users
+// @Description Get list of all users
+// @Tags users
+// @Produce json
+// @Success 200 {array} models.User "List of users"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /users [get]
 func GetUsers(c fiber.Ctx) error {
 	var users []models.User
 	if err := database.DB.Find(&users).Error; err != nil {
@@ -17,6 +24,16 @@ func GetUsers(c fiber.Ctx) error {
 	return c.JSON(users)
 }
 
+// @Summary Create a new user
+// @Description Create a new user account
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param user body models.User true "User data"
+// @Success 201 {object} models.User "User created successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /users [post]
 func CreateUser(c fiber.Ctx) error {
 	user := new(models.User)
 

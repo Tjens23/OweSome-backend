@@ -44,7 +44,17 @@ func getUserIDFromJWT(ctx fiber.Ctx) (uint, error) {
 	return uint(userID), nil
 }
 
-// CreateGroup creates a new group with the authenticated user as admin
+// @Summary Create a new group
+// @Description Create a new expense group with the authenticated user as admin
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param group body CreateGroupInput true "Group data"
+// @Success 201 {object} models.Group "Group created successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Security ApiKeyAuth
+// @Router /groups [post]
 func CreateGroup(ctx fiber.Ctx) error {
 	input := new(CreateGroupInput)
 	
@@ -102,7 +112,14 @@ func CreateGroup(ctx fiber.Ctx) error {
 	})
 }
 
-// GetGroups returns all groups for the authenticated user
+// @Summary Get user groups
+// @Description Get all groups where the authenticated user is a member
+// @Tags groups
+// @Produce json
+// @Success 200 {array} models.Group "List of user groups"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Security ApiKeyAuth
+// @Router /groups [get]
 func GetGroups(ctx fiber.Ctx) error {
 	// Get user ID from JWT token (IsAuth middleware ensures token is valid)
 	userID, err := getUserIDFromJWT(ctx)
@@ -152,7 +169,20 @@ func GetGroup(ctx fiber.Ctx) error {
 	return ctx.JSON(group)
 }
 
-// UpdateGroup updates a group (only admin can update)
+// @Summary Update a group
+// @Description Update group information (only admin can update)
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param id path string true "Group ID"
+// @Param group body UpdateGroupInput true "Updated group data"
+// @Success 200 {object} models.Group "Group updated successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 403 {object} map[string]interface{} "Forbidden - Only admin can update"
+// @Failure 404 {object} map[string]interface{} "Group not found"
+// @Security ApiKeyAuth
+// @Router /groups/update/{id} [patch]
 func UpdateGroup(ctx fiber.Ctx) error {
 	groupID := ctx.Params("id")
 	input := new(UpdateGroupInput)
@@ -208,7 +238,17 @@ func UpdateGroup(ctx fiber.Ctx) error {
 	})
 }
 
-// DeleteGroup deletes a group (only admin can delete)
+// @Summary Delete a group
+// @Description Delete a group and all associated data (only admin can delete)
+// @Tags groups
+// @Produce json
+// @Param id path string true "Group ID"
+// @Success 200 {object} map[string]interface{} "Group deleted successfully"
+// @Failure 401 {object} map[string]interface{} "Unauthorized"
+// @Failure 403 {object} map[string]interface{} "Forbidden - Only admin can delete"
+// @Failure 404 {object} map[string]interface{} "Group not found"
+// @Security ApiKeyAuth
+// @Router /groups/delete/{id} [delete]
 func DeleteGroup(ctx fiber.Ctx) error {
 	groupID := ctx.Params("id")
 
