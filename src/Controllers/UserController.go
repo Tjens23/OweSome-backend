@@ -8,39 +8,39 @@ import (
 )
 
 func GetUsers(c fiber.Ctx) error {
-    var users []models.User
-    if err := database.DB.Find(&users).Error; err != nil {
-        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-            "error": err.Error(),
-        })
-    }
-    return c.JSON(users)
+	var users []models.User
+	if err := database.DB.Find(&users).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+	return c.JSON(users)
 }
 
 func CreateUser(c fiber.Ctx) error {
-    user := new(models.User)
-    
-    if err := c.Bind().Body(user); err != nil {
-        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-            "error": err.Error(),
-        })
-    }
-    
+	user := new(models.User)
+
+	if err := c.Bind().Body(user); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
 	PasswordHash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to hash password",
 		})
 	}
-    user.Password = string(PasswordHash)
+	user.Password = string(PasswordHash)
 
 	if err := database.DB.Create(&user).Error; err != nil {
-        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-            "error": err.Error(),
-        })
-    }
-    
-    return c.Status(fiber.StatusCreated).JSON(user)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(user)
 }
 
 func UpdateUser(c fiber.Ctx) error {
@@ -50,7 +50,7 @@ func UpdateUser(c fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"error": "User not found",
 		})
-	}	
+	}
 	if err := c.Bind().Body(user); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),

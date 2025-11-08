@@ -9,14 +9,14 @@ import (
 )
 
 func main() {
-    app := fiber.New()
+	app := fiber.New()
 	database.Connect()
-    routes.SetupUserRoutes(app)
+	routes.SetupUserRoutes(app)
 	app.Get("/", func(c fiber.Ctx) error {
-        return c.JSON((fiber.Map{
+		return c.JSON((fiber.Map{
 			"message": "Hello, World!",
 			"status":  fiber.StatusOK,
 		}))
-    })
-    log.Fatal(app.Listen(":3001"))
+	})
+	log.Fatal(app.Listen(":3001"))
 }
