@@ -237,14 +237,14 @@ curl -X POST http://localhost:3001/auth/login \
 # Create a group (requires authentication)
 curl -X POST http://localhost:3001/groups \
   -H "Content-Type: application/json" \
-  -H "Cookie: jwt=YOUR_ACCESS_TOKEN" \
+  -H "authorization:  bearer <token> \
   -d '{"name": "Vacation Trip", "description": "Beach vacation expenses"}'
 
 # Create an expense in the group
 curl -X POST http://localhost:3001/expenses \
   -H "Content-Type: application/json" \
-  -H "Cookie: jwt=YOUR_ACCESS_TOKEN" \
-  -d '{"amount": 120.50, "description": "Dinner at restaurant", "group_id": 1}'
+  -H "authorization:  bearer <token> \
+  -d '{"amount": 120.50, "description": "Dinner at restaurant", "group_id": <id>}'
 ```
 
 ## Contributing
