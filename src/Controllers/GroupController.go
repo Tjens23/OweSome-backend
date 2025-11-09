@@ -58,7 +58,6 @@ func getUserIDFromJWT(ctx fiber.Ctx) (uint, error) {
 func CreateGroup(ctx fiber.Ctx) error {
 	input := new(CreateGroupInput)
 	
-	// Use manual JSON parsing to fix parsing issues
 	if err := json.Unmarshal(ctx.Body(), input); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid JSON format. Please check your JSON syntax (missing commas, colons, etc.): " + err.Error(),
@@ -70,7 +69,6 @@ func CreateGroup(ctx fiber.Ctx) error {
 		})
 	}
 
-	// Get user ID from JWT token (IsAuth middleware ensures token is valid)
 	userID, err := getUserIDFromJWT(ctx)
 	if err != nil {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -91,7 +89,6 @@ func CreateGroup(ctx fiber.Ctx) error {
 		})
 	}
 
-	// Automatically add the creator as a member
 	groupMember := models.GroupMember{
 		GroupID: group.ID,
 		UserID:  userID,
@@ -194,7 +191,6 @@ func UpdateGroup(ctx fiber.Ctx) error {
 		})
 	}
 
-	// Get user ID from JWT token (IsAuth middleware ensures token is valid)
 	userID, err := getUserIDFromJWT(ctx)
 	if err != nil {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -214,14 +210,12 @@ func UpdateGroup(ctx fiber.Ctx) error {
 		})
 	}
 
-	// Check if user is admin
 	if group.AdminID != userID {
 		return ctx.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"error": "Only group admin can update the group",
 		})
 	}
 
-	// Update fields
 	group.Name = input.Name
 	group.ProfileImage = input.ProfileImage
 	group.Description = input.Description
@@ -252,7 +246,6 @@ func UpdateGroup(ctx fiber.Ctx) error {
 func DeleteGroup(ctx fiber.Ctx) error {
 	groupID := ctx.Params("id")
 
-	// Get user ID from JWT token (IsAuth middleware ensures token is valid)
 	userID, err := getUserIDFromJWT(ctx)
 	if err != nil {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -272,14 +265,12 @@ func DeleteGroup(ctx fiber.Ctx) error {
 		})
 	}
 
-	// Check if user is admin
 	if group.AdminID != userID {
 		return ctx.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"error": "Only group admin can delete the group",
 		})
 	}
 
-	// Start a transaction to ensure data consistency
 	tx := database.DB.Begin()
 	if tx.Error != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -287,7 +278,6 @@ func DeleteGroup(ctx fiber.Ctx) error {
 		})
 	}
 
-	// Rollback transaction on error
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
@@ -361,7 +351,6 @@ func DeleteGroup(ctx fiber.Ctx) error {
 	})
 }
 
-// AddMemberToGroup adds a user to a group
 func AddMemberToGroup(ctx fiber.Ctx) error {
 	groupID := ctx.Params("id")
 	
@@ -375,7 +364,6 @@ func AddMemberToGroup(ctx fiber.Ctx) error {
 		})
 	}
 
-	// Check if group exists
 	var group models.Group
 	if err := database.DB.First(&group, groupID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -388,7 +376,6 @@ func AddMemberToGroup(ctx fiber.Ctx) error {
 		})
 	}
 
-	// Check if user exists
 	var user models.User
 	if err := database.DB.First(&user, input.UserID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -401,7 +388,6 @@ func AddMemberToGroup(ctx fiber.Ctx) error {
 		})
 	}
 
-	// Check if already a member
 	var existingMember models.GroupMember
 	if err := database.DB.Where("group_id = ? AND user_id = ?", groupID, input.UserID).First(&existingMember).Error; err == nil {
 		if existingMember.IsActive {
@@ -418,7 +404,6 @@ func AddMemberToGroup(ctx fiber.Ctx) error {
 		}
 	}
 
-	// Add new member
 	groupMember := models.GroupMember{
 		GroupID: group.ID,
 		UserID:  input.UserID,
@@ -435,7 +420,6 @@ func AddMemberToGroup(ctx fiber.Ctx) error {
 	})
 }
 
-// RemoveMemberFromGroup removes a user from a group
 func RemoveMemberFromGroup(ctx fiber.Ctx) error {
 	groupID := ctx.Params("id")
 	userIDToRemove := ctx.Params("userId")
@@ -452,7 +436,6 @@ func RemoveMemberFromGroup(ctx fiber.Ctx) error {
 		})
 	}
 
-	// Soft delete by setting IsActive to false
 	groupMember.IsActive = false
 	if err := database.DB.Save(&groupMember).Error; err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

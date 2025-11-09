@@ -21,7 +21,7 @@ func Connect() *gorm.DB {
 		panic("Failed to connect to database!")
 	}
 
-	connection.AutoMigrate(models.User{}, models.Group{}, models.Expense{}, models.GroupMember{}, models.ExpenseShare{}, models.Settlement{})
+	connection.AutoMigrate(models.User{}, models.Group{}, models.Expense{}, models.GroupMember{}, models.ExpenseShare{}, models.Settlement{}, models.RefreshToken{})
 
 	DB = connection
 	return DB
