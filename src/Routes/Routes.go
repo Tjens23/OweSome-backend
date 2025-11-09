@@ -16,6 +16,7 @@ func SetupRoutes(app *fiber.App) {
 	// Auth routes
 	app.Post("/auth/login", controllers.Login)
 	app.Post("/auth/logout", controllers.Logout)
+	app.Post("/auth/refresh", controllers.RefreshToken)
 	app.Get("/auth/user", middleware.IsAuth, controllers.GetUser)
 
 	// Group routes

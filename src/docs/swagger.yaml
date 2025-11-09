@@ -16,6 +16,11 @@ definitions:
       username:
         type: string
     type: object
+  controllers.RefreshInput:
+    properties:
+      refresh_token:
+        type: string
+    type: object
   controllers.UpdateGroupInput:
     properties:
       description:
@@ -231,6 +236,39 @@ paths:
             additionalProperties: true
             type: object
       summary: User logout
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Generate new access token using refresh token
+      parameters:
+      - description: Refresh token
+        in: body
+        name: refresh
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.RefreshInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: New tokens generated
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Invalid or expired refresh token
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Refresh access token
       tags:
       - auth
   /auth/user:
