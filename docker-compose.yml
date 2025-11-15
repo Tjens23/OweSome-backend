@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   app:
     build: .
@@ -9,20 +7,30 @@ services:
       - DATABASE_URL=postgres://postgres:password@db:5432/owesome?sslmode=disable
       - JWT_SECRET=your-super-secure-jwt-secret-key-here
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    restart: unless-stopped
     networks:
       - owesome-network
 
   db:
-    image: postgres:15-alpine
+    image: postgres:18.1-alpine3.22
     environment:
       - POSTGRES_DB=owesome
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d owesome"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
     networks:
       - owesome-network
 
