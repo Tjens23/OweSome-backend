@@ -1,0 +1,34 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      - DATABASE_URL=postgres://postgres:password@db:5432/owesome?sslmode=disable
+      - JWT_SECRET=your-super-secure-jwt-secret-key-here
+    depends_on:
+      - db
+    networks:
+      - owesome-network
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=owesome
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - owesome-network
+
+volumes:
+  postgres_data:
+
+networks:
+  owesome-network:
+    driver: bridge

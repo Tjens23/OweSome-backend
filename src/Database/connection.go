@@ -14,7 +14,7 @@ var DB *gorm.DB
 func Connect() *gorm.DB {
 	err := godotenv.Load()
 	if err != nil {
-		panic("Error loading .env file")
+		println("Warning: .env file not found, using environment variables")
 	}
 	connection, err := gorm.Open(postgres.Open(os.Getenv("DATABASE_URL")), &gorm.Config{})
 	if err != nil {
