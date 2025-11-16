@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"strconv"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v5"
@@ -26,7 +27,7 @@ type UpdateGroupInput struct {
 // Helper function to extract user ID from JWT token
 func getUserIDFromJWT(ctx fiber.Ctx) (uint, error) {
 	cookie := ctx.Cookies("jwt")
-	
+
 	token, err := jwt.ParseWithClaims(cookie, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte("supersecretstring"), nil
 	})
@@ -57,13 +58,13 @@ func getUserIDFromJWT(ctx fiber.Ctx) (uint, error) {
 // @Router /groups [post]
 func CreateGroup(ctx fiber.Ctx) error {
 	input := new(CreateGroupInput)
-	
+
 	if err := json.Unmarshal(ctx.Body(), input); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid JSON format. Please check your JSON syntax (missing commas, colons, etc.): " + err.Error(),
 			"example": map[string]interface{}{
-				"name": "My Group Name",
-				"description": "Group description", 
+				"name":          "My Group Name",
+				"description":   "Group description",
 				"profile_image": "https://example.com/image.jpg",
 			},
 		})
@@ -135,9 +136,61 @@ func GetGroups(ctx fiber.Ctx) error {
 		})
 	}
 
-	var groups []models.Group
+	type CompactGroup struct {
+		ID           uint      `json:"id"`
+		Name         string    `json:"name"`
+		Description  string    `json:"description"`
+		ProfileImage string    `json:"profile_image"`
+		CreatedAt    time.Time `json:"created_at"`
+		UpdatedAt    time.Time `json:"updated_at"`
+		Status       float64   `json:"status"`
+	}
+
+	var groups []CompactGroup
+
 	for _, membership := range groupMemberships {
-		groups = append(groups, membership.Group)
+		group := membership.Group
+
+		// Calculate net balance for the user in this group
+		var totalPaid float64
+		var totalOwed float64
+
+		// Load all expenses for this group with shares
+		var expenses []models.Expense
+		if err := database.DB.
+			Preload("ExpenseShares").
+			Where("group_id = ?", group.ID).
+			Find(&expenses).Error; err != nil {
+			return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to fetch expenses: " + err.Error(),
+			})
+		}
+
+		for _, expense := range expenses {
+			// If user paid this expense, add to totalPaid
+			if expense.PaidByID == userID {
+				totalPaid += expense.Amount
+			}
+
+			// Check how much this user owes in this expense
+			for _, share := range expense.ExpenseShares {
+				if share.UserID == userID {
+					totalOwed += share.AmountOwed
+				}
+			}
+		}
+
+		netBalance := totalPaid - totalOwed // positive = user is owed, negative = user owes
+
+		groups = append(groups, CompactGroup{
+			ID:           group.ID,
+			Name:         group.Name,
+			Description:  group.Description,
+			ProfileImage: group.ProfileImage,
+			CreatedAt:    group.CreatedAt,
+			UpdatedAt:    group.UpdatedAt,
+			Status:       netBalance,
+		})
 	}
 
 	return ctx.JSON(fiber.Map{
@@ -147,8 +200,15 @@ func GetGroups(ctx fiber.Ctx) error {
 
 // GetGroup returns a specific group by ID
 func GetGroup(ctx fiber.Ctx) error {
+	userID, err := getUserIDFromJWT(ctx)
+	if err != nil {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Failed to extract user ID from token",
+		})
+	}
+
 	groupID := ctx.Params("id")
-	
+
 	var group models.Group
 	if err := database.DB.Preload("GroupAdmin").
 		Preload("Members.User").
@@ -163,7 +223,60 @@ func GetGroup(ctx fiber.Ctx) error {
 		})
 	}
 
-	return ctx.JSON(group)
+	// Calculate net balance for this user in this group
+	var expenses []models.Expense
+	if err := database.DB.
+		Preload("ExpenseShares").
+		Where("group_id = ?", group.ID).
+		Find(&expenses).Error; err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to fetch expenses: " + err.Error(),
+		})
+	}
+
+	var totalPaid float64
+	var totalOwed float64
+
+	for _, expense := range expenses {
+		if expense.PaidByID == userID {
+			totalPaid += expense.Amount
+		}
+
+		for _, share := range expense.ExpenseShares {
+			if share.UserID == userID {
+				totalOwed += share.AmountOwed
+			}
+		}
+	}
+
+	netBalance := totalPaid - totalOwed
+
+	// Build a response struct with net balance
+	type GroupWithBalance struct {
+		ID           uint      `json:"id"`
+		Name         string    `json:"name"`
+		Description  string    `json:"description"`
+		ProfileImage string    `json:"profile_image"`
+		CreatedAt    time.Time `json:"created_at"`
+		UpdatedAt    time.Time `json:"updated_at"`
+		Admin        any       `json:"admin"`
+		Members      any       `json:"members"`
+		Status       float64   `json:"status"`
+	}
+
+	response := GroupWithBalance{
+		ID:           group.ID,
+		Name:         group.Name,
+		Description:  group.Description,
+		ProfileImage: group.ProfileImage,
+		CreatedAt:    group.CreatedAt,
+		UpdatedAt:    group.UpdatedAt,
+		Admin:        group.GroupAdmin,
+		Members:      group.Members,
+		Status:       netBalance,
+	}
+
+	return ctx.JSON(response)
 }
 
 // @Summary Update a group
@@ -183,7 +296,7 @@ func GetGroup(ctx fiber.Ctx) error {
 func UpdateGroup(ctx fiber.Ctx) error {
 	groupID := ctx.Params("id")
 	input := new(UpdateGroupInput)
-	
+
 	// Use manual JSON parsing to fix parsing issues
 	if err := json.Unmarshal(ctx.Body(), input); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -353,11 +466,11 @@ func DeleteGroup(ctx fiber.Ctx) error {
 
 func AddMemberToGroup(ctx fiber.Ctx) error {
 	groupID := ctx.Params("id")
-	
+
 	var input struct {
 		UserID uint `json:"user_id"`
 	}
-	
+
 	if err := ctx.Bind().JSON(&input); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Cannot parse JSON: " + err.Error(),

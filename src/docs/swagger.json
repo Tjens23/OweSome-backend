@@ -181,7 +181,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.Group"
+                                "$ref": "#/definitions/models.GroupCompact"
                             }
                         }
                     },
@@ -609,6 +609,35 @@
                 },
                 "updatedAt": {
                     "type": "string"
+                },
+                "status": {
+                    "type": "number"
+                }
+            }
+        },
+        "models.GroupCompact": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "profileImage": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "number"
                 }
             }
         },

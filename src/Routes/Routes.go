@@ -9,18 +9,19 @@ import (
 func SetupRoutes(app *fiber.App) {
 	// User routes
 	app.Get("/users", controllers.GetUsers)
-	app.Post("/users", controllers.CreateUser)
 	app.Patch("/users/update/:id", controllers.UpdateUser)
 	app.Delete("/users/delete/:id", controllers.DeleteUser)
-	
+
 	// Auth routes
 	app.Post("/auth/login", controllers.Login)
+	app.Post("/auth/register", controllers.CreateUser)
 	app.Post("/auth/logout", controllers.Logout)
 	app.Post("/auth/refresh", controllers.RefreshToken)
 	app.Get("/auth/user", middleware.IsAuth, controllers.GetUser)
 
 	// Group routes
 	app.Get("/groups", middleware.IsAuth, controllers.GetGroups)
+	app.Get("/groups/:id", middleware.IsAuth, controllers.GetGroup)
 	app.Post("/groups", middleware.IsAuth, controllers.CreateGroup)
 	app.Patch("/groups/update/:id", middleware.IsAuth, controllers.UpdateGroup)
 	app.Delete("/groups/delete/:id", middleware.IsAuth, controllers.DeleteGroup)
