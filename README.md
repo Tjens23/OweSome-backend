@@ -17,6 +17,7 @@
 - 👥 **User Management** with secure password hashing
 - 🏠 **Group Management** with admin controls
 - 💰 **Expense Tracking** with automatic split calculations
+- 🧮 **Smart Settlement Algorithm** inspired by Splitwise's debt simplification
 - 📊 **Swagger Documentation** with interactive UI
 - 🔄 **Token Refresh System** for seamless authentication
 - 🛡️ **Secure Middleware** for protected routes
@@ -107,6 +108,13 @@ Once the server is running, access the interactive Swagger documentation:
 - `PATCH /expenses/update/:id` - Update expense
 - `DELETE /expenses/delete/:id` - Delete expense
 
+### Settlements
+
+- `POST /settlements/calculate` - Calculate optimal settlements for a group
+- `POST /settlements/create` - Create settlement records (admin only)
+- `GET /groups/:id/settlements` - Get all settlements for a group
+- `POST /settlements/:id/confirm` - Confirm a settlement payment
+
 ## Database Schema
 
 The application uses PostgreSQL with GORM for ORM. Database tables are auto-migrated on startup:
@@ -118,6 +126,62 @@ The application uses PostgreSQL with GORM for ORM. Database tables are auto-migr
 - **expenses** - Shared expenses with amounts and descriptions
 - **expense_shares** - Individual user shares of expenses
 - **settlements** - Payment settlements between users
+
+## Settlement Algorithm
+
+The settlement system implements a debt simplification algorithm inspired by Splitwise to minimize the number of transactions needed to settle all debts within a group.
+
+### How It Works
+
+1. **Calculate Net Balances**: For each user, calculate how much they paid vs. how much they owe
+2. **Identify Debtors and Creditors**: Users with negative balances owe money, positive balances are owed money
+3. **Optimize Transactions**: Match the largest debtor with the largest creditor to minimize total transactions
+4. **Iterate Until Settled**: Continue until all balances are zero
+
+### Example Scenario
+
+**Initial Expenses:**
+
+- Alice pays $120 for dinner (split $40 each among 3 people)
+- Bob pays $90 for groceries (split $30 each among 3 people)
+- Charlie pays $60 for movie tickets (split $20 each among 3 people)
+
+**Net Balances:**
+
+- Alice: Paid $120, owes $50 → Net: +$70 (owed $70)
+- Bob: Paid $90, owes $60 → Net: +$30 (owed $30)
+- Charlie: Paid $60, owes $90 → Net: -$100 (owes $100)
+
+**Without Optimization (6 transactions):**
+
+- Charlie → Alice: $40, Charlie → Bob: $30, Charlie → Alice: $20
+- Alice → Bob: $30, Bob → Alice: $40, etc.
+
+**With Settlement Algorithm (2 transactions):**
+
+- Charlie → Alice: $70
+- Charlie → Bob: $30
+
+### API Usage
+
+```bash
+# Calculate optimal settlements
+POST /settlements/calculate
+{
+  "group_id": 1
+}
+
+# Create settlement records
+POST /settlements/create
+{
+  "group_id": 1
+}
+
+# Confirm payment (as payer)
+POST /settlements/123/confirm
+```
+
+For detailed testing instructions, see [SETTLEMENT_TEST_GUIDE.md](./SETTLEMENT_TEST_GUIDE.md).
 
 ## Authentication System
 
@@ -167,7 +231,8 @@ OweSome-backend/
 │   │   ├── AuthController.go   # Authentication & token management
 │   │   ├── UserController.go   # User CRUD operations
 │   │   ├── GroupController.go  # Group management
-│   │   └── ExpenseController.go # Expense tracking
+│   │   ├── ExpenseController.go # Expense tracking
+│   │   └── SettlementController.go # Debt settlement calculations
 │   ├── Database/
 │   │   ├── connection.go       # PostgreSQL connection
 │   │   └── models/             # Database models

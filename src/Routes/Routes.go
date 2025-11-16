@@ -31,4 +31,10 @@ func SetupRoutes(app *fiber.App) {
 	app.Get("/expenses/:id", middleware.IsAuth, controllers.GetExpense)
 	app.Patch("/expenses/update/:id", middleware.IsAuth, controllers.UpdateExpense)
 	app.Delete("/expenses/delete/:id", middleware.IsAuth, controllers.DeleteExpense)
+
+	// Settlement routes
+	app.Post("/settlements/calculate", middleware.IsAuth, controllers.CalculateSettlements)
+	app.Post("/settlements/create", middleware.IsAuth, controllers.CreateSettlements)
+	app.Get("/groups/:id/settlements", middleware.IsAuth, controllers.GetGroupSettlements)
+	app.Post("/settlements/:id/confirm", middleware.IsAuth, controllers.ConfirmSettlement)
 }
