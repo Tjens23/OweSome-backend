@@ -8,13 +8,15 @@ type Expense struct {
 	Description string    `gorm:"not null"`
 	CreatedAt   time.Time `gorm:"autoCreateTime"`
 	UpdatedAt   time.Time `gorm:"autoUpdateTime"`
-	
-	GroupID     uint      `gorm:"not null"`
-	PaidByID    uint      `gorm:"not null"` 
-	
-	Group       Group         `gorm:"foreignKey:GroupID"`
-	PaidBy      User          `gorm:"foreignKey:PaidByID"`
+
+	GroupID  uint `gorm:"not null"`
+	PaidByID uint `gorm:"not null"`
+
+	Group         Group          `gorm:"foreignKey:GroupID"`
+	PaidBy        User           `gorm:"foreignKey:PaidByID"`
 	ExpenseShares []ExpenseShare `gorm:"foreignKey:ExpenseID"`
+
+	Status float64 `gorm:"-"`
 }
 
 type ExpenseShare struct {
@@ -23,9 +25,9 @@ type ExpenseShare struct {
 	UserID     uint    `gorm:"not null"`
 	AmountOwed float64 `gorm:"not null"`
 	IsPaid     bool    `gorm:"default:false"`
-	
-	Expense    Expense `gorm:"foreignKey:ExpenseID"`
-	User       User    `gorm:"foreignKey:UserID"`
+
+	Expense Expense `gorm:"foreignKey:ExpenseID"`
+	User    User    `gorm:"foreignKey:UserID"`
 }
 
 type Settlement struct {
@@ -33,12 +35,12 @@ type Settlement struct {
 	Amount      float64   `gorm:"not null"`
 	CreatedAt   time.Time `gorm:"autoCreateTime"`
 	IsConfirmed bool      `gorm:"default:false"`
-	
-	GroupID     uint      `gorm:"not null"`
-	PayerID     uint      `gorm:"not null"` 
-	ReceiverID  uint      `gorm:"not null"` 
-	
-	Group       Group     `gorm:"foreignKey:GroupID"`
-	Payer       User      `gorm:"foreignKey:PayerID"`
-	Receiver    User      `gorm:"foreignKey:ReceiverID"`
+
+	GroupID    uint `gorm:"not null"`
+	PayerID    uint `gorm:"not null"`
+	ReceiverID uint `gorm:"not null"`
+
+	Group    Group `gorm:"foreignKey:GroupID"`
+	Payer    User  `gorm:"foreignKey:PayerID"`
+	Receiver User  `gorm:"foreignKey:ReceiverID"`
 }

@@ -224,7 +224,7 @@ func GetGroup(ctx fiber.Ctx) error {
 	}
 
 	// Calculate net balance for this user in this group
-	var expenses []models.Expense
+	var expenses []models.Expense = []models.Expense{}
 	if err := database.DB.
 		Preload("ExpenseShares").
 		Where("group_id = ?", group.ID).
@@ -234,17 +234,26 @@ func GetGroup(ctx fiber.Ctx) error {
 		})
 	}
 
+	var users []models.User
+	for _, member := range group.Members {
+		users = append(users, member.User)
+	}
+
 	var totalPaid float64
 	var totalOwed float64
 
-	for _, expense := range expenses {
+	for i := range expenses {
+		expense := &expenses[i]
+
 		if expense.PaidByID == userID {
 			totalPaid += expense.Amount
+			expense.Status = expense.Amount
 		}
 
 		for _, share := range expense.ExpenseShares {
 			if share.UserID == userID {
 				totalOwed += share.AmountOwed
+				expense.Status = -share.AmountOwed
 			}
 		}
 	}
@@ -262,6 +271,7 @@ func GetGroup(ctx fiber.Ctx) error {
 		Admin        any       `json:"admin"`
 		Members      any       `json:"members"`
 		Status       float64   `json:"status"`
+		Expenses     any       `json:"expenses"`
 	}
 
 	response := GroupWithBalance{
@@ -272,8 +282,9 @@ func GetGroup(ctx fiber.Ctx) error {
 		CreatedAt:    group.CreatedAt,
 		UpdatedAt:    group.UpdatedAt,
 		Admin:        group.GroupAdmin,
-		Members:      group.Members,
+		Members:      users,
 		Status:       netBalance,
+		Expenses:     expenses,
 	}
 
 	return ctx.JSON(response)
