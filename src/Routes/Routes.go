@@ -26,7 +26,7 @@ func SetupRoutes(app *fiber.App) {
 	app.Post("/groups", middleware.IsAuth, controllers.CreateGroup)
 	app.Patch("/groups/update/:id", middleware.IsAuth, controllers.UpdateGroup)
 	app.Delete("/groups/delete/:id", middleware.IsAuth, controllers.DeleteGroup)
-	app.Post("/groups/:id/add-member", middleware.IsAuth, controllers.AddMemberToGroup)
+	app.Post("/groups/:id/addmember", middleware.IsAuth, controllers.AddMemberToGroup)
 	app.Post("/groups/:id/remove-member", middleware.IsAuth, controllers.RemoveMemberFromGroup)
 
 	// Expense routes
