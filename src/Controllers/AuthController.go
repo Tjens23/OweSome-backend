@@ -15,7 +15,6 @@ import (
 	"gorm.io/gorm"
 )
 
-
 type LoginInput struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
@@ -55,7 +54,7 @@ func generateAccessToken(userID uint) (string, error) {
 // @Router /auth/login [post]
 func Login(ctx fiber.Ctx) error {
 	input := new(LoginInput)
-	
+
 	if err := json.Unmarshal(ctx.Body(), input); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Cannot parse JSON: " + err.Error(),
@@ -129,7 +128,8 @@ func Login(ctx fiber.Ctx) error {
 		"message":       "Welcome back, " + user.Username,
 		"access_token":  accessToken,
 		"refresh_token": refreshTokenString,
-		"expires_in":    time.Now().Add(24 * time.Hour).Unix(), 
+		"user":          user,
+		"expires_in":    time.Now().Add(24 * time.Hour).Unix(),
 	})
 }
 
@@ -146,11 +146,11 @@ func Logout(ctx fiber.Ctx) error {
 		token, err := jwt.ParseWithClaims(jwtCookie, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
 			return []byte("supersecretstring"), nil
 		})
-		
+
 		if err == nil {
 			claims := token.Claims.(*jwt.RegisteredClaims)
 			userID, _ := strconv.Atoi(claims.Issuer)
-			
+
 			// Revoke all refresh tokens for this user
 			database.DB.Model(&models.RefreshToken{}).Where("user_id = ?", userID).Update("is_revoked", true)
 		}
@@ -187,7 +187,7 @@ func Logout(ctx fiber.Ctx) error {
 // @Router /auth/user [get]
 func GetUser(ctx fiber.Ctx) error {
 	cookie := ctx.Cookies("jwt")
-	
+
 	token, err := jwt.ParseWithClaims(cookie, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte("supersecretstring"), nil
 	})
@@ -223,7 +223,7 @@ func GetUser(ctx fiber.Ctx) error {
 // @Router /auth/refresh [post]
 func RefreshToken(ctx fiber.Ctx) error {
 	var input RefreshInput
-	
+
 	// Try to get refresh token from request body
 	if err := json.Unmarshal(ctx.Body(), &input); err != nil {
 		// If not in body, try to get from cookie
