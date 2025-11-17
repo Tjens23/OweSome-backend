@@ -5,6 +5,7 @@ import (
 	database "github.com/tjens23/tabsplit-backend/src/Database"
 	"github.com/tjens23/tabsplit-backend/src/Database/models"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 // @Summary Get all users
@@ -24,6 +25,22 @@ func GetUsers(c fiber.Ctx) error {
 	return c.JSON(users)
 }
 
+func GetUserByUsername(c fiber.Ctx) error {
+
+	username := c.Params("username")
+	var user models.User
+	if err := database.DB.Where("username = ?", username).First(&user).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"error": "User not found",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+	return c.JSON(user)
+}
 // @Summary Create a new user
 // @Description Create a new user account
 // @Tags users
