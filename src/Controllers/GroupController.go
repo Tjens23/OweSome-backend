@@ -104,9 +104,35 @@ func CreateGroup(ctx fiber.Ctx) error {
 	// Load the group with admin info
 	database.DB.Preload("GroupAdmin").First(&group, group.ID)
 
+	type GroupWithBalance struct {
+		ID           uint      `json:"id"`
+		Name         string    `json:"name"`
+		Description  string    `json:"description"`
+		ProfileImage string    `json:"profile_image"`
+		CreatedAt    time.Time `json:"created_at"`
+		UpdatedAt    time.Time `json:"updated_at"`
+		Admin        any       `json:"admin"`
+		Members      any       `json:"members"`
+		Status       float64   `json:"status"`
+		Expenses     any       `json:"expenses"`
+	}
+
+	response := GroupWithBalance{
+		ID:           group.ID,
+		Name:         group.Name,
+		Description:  group.Description,
+		ProfileImage: group.ProfileImage,
+		CreatedAt:    group.CreatedAt,
+		UpdatedAt:    group.UpdatedAt,
+		Admin:        group.GroupAdmin,
+		Members:      []models.User{},
+		Status:       0,
+		Expenses:     []models.Expense{},
+	}
+
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"message": "Group created successfully",
-		"group":   group,
+		"group":   response,
 	})
 }
 
