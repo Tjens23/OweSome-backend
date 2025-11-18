@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"encoding/json"
+
 	"github.com/gofiber/fiber/v3"
 	database "github.com/tjens23/tabsplit-backend/src/Database"
 	"github.com/tjens23/tabsplit-backend/src/Database/models"
@@ -41,6 +43,7 @@ func GetUserByUsername(c fiber.Ctx) error {
 	}
 	return c.JSON(user)
 }
+
 // @Summary Create a new user
 // @Description Create a new user account
 // @Tags users
@@ -52,12 +55,26 @@ func GetUserByUsername(c fiber.Ctx) error {
 // @Failure 500 {object} map[string]interface{} "Internal server error"
 // @Router /users [post]
 func CreateUser(c fiber.Ctx) error {
-	user := new(models.User)
+	type RegisterInput struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+		Email    string `json:"email"`
+		Phone    string `json:"phone"`
+	}
 
-	if err := c.Bind().Body(user); err != nil {
+	input := new(RegisterInput)
+
+	if err := json.Unmarshal(c.Body(), input); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})
+	}
+
+	user := models.User{
+		Username: input.Username,
+		Password: input.Password,
+		Email:    input.Email,
+		Phone:    input.Phone,
 	}
 
 	PasswordHash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
