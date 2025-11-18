@@ -614,10 +614,19 @@ func AddMemberToGroup(ctx fiber.Ctx) error {
 
 func RemoveMemberFromGroup(ctx fiber.Ctx) error {
 	groupID := ctx.Params("id")
-	userIDToRemove := ctx.Params("userId")
+
+	var input struct {
+		UserID uint `json:"user_id"`
+	}
+
+	if err := ctx.Bind().JSON(&input); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Cannot parse JSON: " + err.Error(),
+		})
+	}
 
 	var groupMember models.GroupMember
-	if err := database.DB.Where("group_id = ? AND user_id = ? AND is_active = ?", groupID, userIDToRemove, true).First(&groupMember).Error; err != nil {
+	if err := database.DB.Where("group_id = ? AND user_id = ? AND is_active = ?", groupID, input.UserID, true).First(&groupMember).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
 				"error": "User is not a member of this group",
@@ -628,8 +637,7 @@ func RemoveMemberFromGroup(ctx fiber.Ctx) error {
 		})
 	}
 
-	groupMember.IsActive = false
-	if err := database.DB.Save(&groupMember).Error; err != nil {
+	if err := database.DB.Delete(&groupMember).Error; err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to remove user from group: " + err.Error(),
 		})
