@@ -156,6 +156,8 @@ func GetGroups(ctx fiber.Ctx) error {
 	var groupMemberships []models.GroupMember
 	if err := database.DB.Where("user_id = ? AND is_active = ?", userID, true).
 		Preload("Group.GroupAdmin").
+		Joins("JOIN groups ON groups.id = group_members.group_id").
+		Order("groups.updated_at DESC").
 		Find(&groupMemberships).Error; err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to fetch groups: " + err.Error(),
