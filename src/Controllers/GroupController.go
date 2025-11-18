@@ -226,7 +226,9 @@ func GetGroup(ctx fiber.Ctx) error {
 	// Calculate net balance for this user in this group
 	var expenses []models.Expense = []models.Expense{}
 	if err := database.DB.
+		Preload("PaidBy").
 		Preload("ExpenseShares").
+		Preload("ExpenseShares.User").
 		Where("group_id = ?", group.ID).
 		Find(&expenses).Error; err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -323,7 +325,7 @@ func UpdateGroup(ctx fiber.Ctx) error {
 	}
 
 	var group models.Group
-	if err := database.DB.First(&group, groupID).Error; err != nil {
+	if err := database.DB.Preload("Members.User").First(&group, groupID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
 				"error": "Group not found",
@@ -350,9 +352,75 @@ func UpdateGroup(ctx fiber.Ctx) error {
 		})
 	}
 
+	// Calculate net balance for this user in this group
+	var expenses []models.Expense = []models.Expense{}
+	if err := database.DB.
+		Preload("PaidBy").
+		Preload("ExpenseShares").
+		Preload("ExpenseShares.User").
+		Where("group_id = ?", group.ID).
+		Find(&expenses).Error; err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to fetch expenses: " + err.Error(),
+		})
+	}
+
+	var users []models.User
+	for _, member := range group.Members {
+		users = append(users, member.User)
+	}
+
+	var totalPaid float64
+	var totalOwed float64
+
+	for i := range expenses {
+		expense := &expenses[i]
+
+		if expense.PaidByID == userID {
+			totalPaid += expense.Amount
+			expense.Status = expense.Amount
+		}
+
+		for _, share := range expense.ExpenseShares {
+			if share.UserID == userID {
+				totalOwed += share.AmountOwed
+				expense.Status = -share.AmountOwed
+			}
+		}
+	}
+
+	netBalance := totalPaid - totalOwed
+
+	// Build a response struct with net balance
+	type GroupWithBalance struct {
+		ID           uint      `json:"id"`
+		Name         string    `json:"name"`
+		Description  string    `json:"description"`
+		ProfileImage string    `json:"profile_image"`
+		CreatedAt    time.Time `json:"created_at"`
+		UpdatedAt    time.Time `json:"updated_at"`
+		Admin        any       `json:"admin"`
+		Members      any       `json:"members"`
+		Status       float64   `json:"status"`
+		Expenses     any       `json:"expenses"`
+	}
+
+	response := GroupWithBalance{
+		ID:           group.ID,
+		Name:         group.Name,
+		Description:  group.Description,
+		ProfileImage: group.ProfileImage,
+		CreatedAt:    group.CreatedAt,
+		UpdatedAt:    group.UpdatedAt,
+		Admin:        group.GroupAdmin,
+		Members:      users,
+		Status:       netBalance,
+		Expenses:     expenses,
+	}
+
 	return ctx.JSON(fiber.Map{
 		"message": "Group updated successfully",
-		"group":   group,
+		"group":   response,
 	})
 }
 

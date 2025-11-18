@@ -12,7 +12,7 @@ type Expense struct {
 	GroupID  uint `gorm:"not null"`
 	PaidByID uint `gorm:"not null"`
 
-	Group         Group          `gorm:"foreignKey:GroupID"`
+	Group         Group          `gorm:"foreignKey:GroupID" json:"-"`
 	PaidBy        User           `gorm:"foreignKey:PaidByID"`
 	ExpenseShares []ExpenseShare `gorm:"foreignKey:ExpenseID"`
 
@@ -26,7 +26,7 @@ type ExpenseShare struct {
 	AmountOwed float64 `gorm:"not null"`
 	IsPaid     bool    `gorm:"default:false"`
 
-	Expense Expense `gorm:"foreignKey:ExpenseID"`
+	Expense Expense `gorm:"foreignKey:ExpenseID" json:"-"`
 	User    User    `gorm:"foreignKey:UserID"`
 }
 
@@ -40,7 +40,7 @@ type Settlement struct {
 	PayerID    uint `gorm:"not null"`
 	ReceiverID uint `gorm:"not null"`
 
-	Group    Group `gorm:"foreignKey:GroupID"`
+	Group    Group `gorm:"foreignKey:GroupID" json:"-"`
 	Payer    User  `gorm:"foreignKey:PayerID"`
 	Receiver User  `gorm:"foreignKey:ReceiverID"`
 }
