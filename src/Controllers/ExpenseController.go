@@ -9,11 +9,16 @@ import (
 	"gorm.io/gorm"
 )
 
+type CreateExpenseShareInput struct {
+	UserID     uint    `json:"user_id"`
+	AmountOwed float64 `json:"amount_owed"`
+}
+
 type CreateExpenseInput struct {
-	Amount      float64 `json:"amount"`
-	Description string  `json:"description"`
-	GroupID     uint    `json:"group_id"`
-	SplitAmong  []uint  `json:"split_among"` // Array of user IDs to split among
+	Amount        float64                   `json:"amount"`
+	Description   string                    `json:"description"`
+	GroupID       uint                      `json:"group_id"`
+	ExpenseShares []CreateExpenseShareInput `json:"expense_shares"`
 }
 
 type UpdateExpenseInput struct {
@@ -24,7 +29,7 @@ type UpdateExpenseInput struct {
 // CreateExpense creates a new expense and splits it among specified users
 func CreateExpense(ctx fiber.Ctx) error {
 	input := new(CreateExpenseInput)
-	
+
 	if err := ctx.Bind().JSON(input); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Cannot parse JSON: " + err.Error(),
@@ -68,23 +73,20 @@ func CreateExpense(ctx fiber.Ctx) error {
 		})
 	}
 
-	// Calculate split amount
-	splitAmount := input.Amount / float64(len(input.SplitAmong))
-
 	// Create expense shares
-	for _, splitUserID := range input.SplitAmong {
+	for _, share := range input.ExpenseShares {
 		// Verify each user is a member of the group
 		var memberCheck models.GroupMember
-		if err := database.DB.Where("group_id = ? AND user_id = ? AND is_active = ?", input.GroupID, splitUserID, true).First(&memberCheck).Error; err != nil {
+		if err := database.DB.Where("group_id = ? AND user_id = ? AND is_active = ?", input.GroupID, share.UserID, true).First(&memberCheck).Error; err != nil {
 			return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "User ID " + strconv.Itoa(int(splitUserID)) + " is not a member of this group",
+				"error": "User ID " + strconv.Itoa(int(share.UserID)) + " is not a member of this group",
 			})
 		}
 
 		expenseShare := models.ExpenseShare{
 			ExpenseID:  expense.ID,
-			UserID:     splitUserID,
-			AmountOwed: splitAmount,
+			UserID:     share.UserID,
+			AmountOwed: share.AmountOwed,
 		}
 
 		if err := database.DB.Create(&expenseShare).Error; err != nil {
@@ -198,7 +200,7 @@ func GetExpense(ctx fiber.Ctx) error {
 func UpdateExpense(ctx fiber.Ctx) error {
 	expenseID := ctx.Params("id")
 	input := new(UpdateExpenseInput)
-	
+
 	if err := ctx.Bind().JSON(input); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Cannot parse JSON: " + err.Error(),
@@ -358,12 +360,12 @@ func GetUserBalance(ctx fiber.Ctx) error {
 	balance := totalPaid - totalOwed
 
 	return ctx.JSON(fiber.Map{
-		"user_id":     userID,
-		"group_id":    groupID,
-		"total_paid":  totalPaid,
-		"total_owed":  totalOwed,
-		"balance":     balance,
-		"status":      func() string {
+		"user_id":    userID,
+		"group_id":   groupID,
+		"total_paid": totalPaid,
+		"total_owed": totalOwed,
+		"balance":    balance,
+		"status": func() string {
 			if balance > 0 {
 				return "owed" // Others owe this user
 			} else if balance < 0 {
