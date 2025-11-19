@@ -37,17 +37,10 @@ func CreateExpense(ctx fiber.Ctx) error {
 	}
 
 	// Get current user from auth
-	userIDStr := ctx.Get("X-User-ID")
-	if userIDStr == "" {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "User ID not found",
-		})
-	}
-
-	userID, err := strconv.Atoi(userIDStr)
+	userID, err := getUserIDFromJWT(ctx)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid user ID",
+		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Failed to extract user ID from token",
 		})
 	}
 
