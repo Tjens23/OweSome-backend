@@ -41,4 +41,6 @@ func SetupRoutes(app *fiber.App) {
 	app.Post("/settlements/create", middleware.IsAuth, controllers.CreateSettlements)
 	app.Get("/groups/:id/settlements", middleware.IsAuth, controllers.GetGroupSettlements)
 	app.Post("/settlements/:id/confirm", middleware.IsAuth, controllers.ConfirmSettlement)
+
+	app.Get("/notifications", middleware.IsAuth, controllers.GetNewNotifications)
 }

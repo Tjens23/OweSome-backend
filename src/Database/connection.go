@@ -15,7 +15,7 @@ import (
 var DB *gorm.DB
 
 func Connect() *gorm.DB {
-	_ = godotenv.Load() 
+	_ = godotenv.Load()
 
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
@@ -65,6 +65,7 @@ connected:
 		&models.ExpenseShare{},
 		&models.Settlement{},
 		&models.RefreshToken{},
+		&models.Notification{},
 	); migrateErr != nil {
 		log.Fatalf("AutoMigrate failed: %v", migrateErr)
 	}

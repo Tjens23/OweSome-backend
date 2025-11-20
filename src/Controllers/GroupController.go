@@ -635,6 +635,14 @@ func AddMemberToGroup(ctx fiber.Ctx) error {
 		})
 	}
 
+	if err := database.DB.Create(&models.Notification{
+		Message: "You have been added to a new group: " + group.Name,
+		UserID:  input.UserID,
+		New:     true,
+	}).Error; err != nil {
+		println("Could not send notification " + err.Error())
+	}
+
 	return ctx.JSON(fiber.Map{
 		"message": "User added to group successfully",
 	})
@@ -654,7 +662,7 @@ func RemoveMemberFromGroup(ctx fiber.Ctx) error {
 	}
 
 	var groupMember models.GroupMember
-	if err := database.DB.Where("group_id = ? AND user_id = ? AND is_active = ?", groupID, input.UserID, true).First(&groupMember).Error; err != nil {
+	if err := database.DB.Preload("Group").Where("group_id = ? AND user_id = ? AND is_active = ?", groupID, input.UserID, true).First(&groupMember).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
 				"error": "User is not a member of this group",
@@ -669,6 +677,14 @@ func RemoveMemberFromGroup(ctx fiber.Ctx) error {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to remove user from group: " + err.Error(),
 		})
+	}
+
+	if err := database.DB.Create(&models.Notification{
+		Message: "You have been removed from group: " + groupMember.Group.Name,
+		UserID:  input.UserID,
+		New:     true,
+	}).Error; err != nil {
+		println("Could not send notification " + err.Error())
 	}
 
 	return ctx.JSON(fiber.Map{

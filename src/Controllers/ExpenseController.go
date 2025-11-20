@@ -46,7 +46,7 @@ func CreateExpense(ctx fiber.Ctx) error {
 
 	// Verify user is member of the group
 	var groupMember models.GroupMember
-	if err := database.DB.Where("group_id = ? AND user_id = ? AND is_active = ?", input.GroupID, userID, true).First(&groupMember).Error; err != nil {
+	if err := database.DB.Preload("Group").Where("group_id = ? AND user_id = ? AND is_active = ?", input.GroupID, userID, true).First(&groupMember).Error; err != nil {
 		return ctx.Status(fiber.StatusForbidden).JSON(fiber.Map{
 			"error": "You are not a member of this group",
 		})
@@ -91,6 +91,16 @@ func CreateExpense(ctx fiber.Ctx) error {
 
 	// Load expense with relationships
 	database.DB.Preload("PaidBy").Preload("Group").Preload("ExpenseShares.User").First(&expense, expense.ID)
+
+	for _, share := range input.ExpenseShares {
+		if err := database.DB.Create(&models.Notification{
+			Message: "New expense in group: " + groupMember.Group.Name,
+			UserID:  share.UserID,
+			New:     true,
+		}).Error; err != nil {
+			println("Failed to send notification: " + err.Error())
+		}
+	}
 
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"message": "Expense created successfully",
