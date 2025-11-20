@@ -237,6 +237,16 @@ func GetGroup(ctx fiber.Ctx) error {
 
 	groupID := ctx.Params("id")
 
+	var member models.GroupMember
+	if err := database.DB.
+		Where("group_id = ? AND user_id = ?", groupID, userID).
+		First(&member).Error; err != nil {
+
+		return ctx.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"error": "You are not a member of this group",
+		})
+	}
+
 	var group models.Group
 	if err := database.DB.Preload("GroupAdmin").
 		Preload("Members.User").
