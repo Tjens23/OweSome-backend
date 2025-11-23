@@ -115,6 +115,7 @@ func CreateGroup(ctx fiber.Ctx) error {
 		Members      any       `json:"members"`
 		Status       float64   `json:"status"`
 		Expenses     any       `json:"expenses"`
+		Settlements  any       `json:"settlements"`
 	}
 
 	response := GroupWithBalance{
@@ -128,6 +129,7 @@ func CreateGroup(ctx fiber.Ctx) error {
 		Members:      []models.User{},
 		Status:       0,
 		Expenses:     []models.Expense{},
+		Settlements:  []models.Settlement{},
 	}
 
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{
@@ -195,6 +197,10 @@ func GetGroups(ctx fiber.Ctx) error {
 		}
 
 		for _, expense := range expenses {
+			if expense.Settled {
+				continue
+			}
+
 			// If user paid this expense, add to totalPaid
 			if expense.PaidByID == userID {
 				totalPaid += expense.Amount
@@ -249,6 +255,9 @@ func GetGroup(ctx fiber.Ctx) error {
 
 	var group models.Group
 	if err := database.DB.Preload("GroupAdmin").
+		Preload("Settlements").
+		Preload("Settlements.Payer").
+		Preload("Settlements.Receiver").
 		Preload("Members.User").
 		First(&group, groupID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -285,6 +294,10 @@ func GetGroup(ctx fiber.Ctx) error {
 	for i := range expenses {
 		expense := &expenses[i]
 
+		if expense.Settled {
+			continue
+		}
+
 		if expense.PaidByID == userID {
 			totalPaid += expense.Amount
 			expense.Status = expense.Amount
@@ -312,6 +325,7 @@ func GetGroup(ctx fiber.Ctx) error {
 		Members      any       `json:"members"`
 		Status       float64   `json:"status"`
 		Expenses     any       `json:"expenses"`
+		Settlements  any       `json:"settlements"`
 	}
 
 	response := GroupWithBalance{
@@ -325,6 +339,7 @@ func GetGroup(ctx fiber.Ctx) error {
 		Members:      users,
 		Status:       netBalance,
 		Expenses:     expenses,
+		Settlements:  group.Settlements,
 	}
 
 	return ctx.JSON(response)
@@ -363,7 +378,12 @@ func UpdateGroup(ctx fiber.Ctx) error {
 	}
 
 	var group models.Group
-	if err := database.DB.Preload("Members.User").First(&group, groupID).Error; err != nil {
+	if err := database.DB.
+		Preload("Members.User").
+		Preload("Settlements").
+		Preload("Settlements.Payer").
+		Preload("Settlements.Receiver").
+		First(&group, groupID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
 				"error": "Group not found",
@@ -414,6 +434,10 @@ func UpdateGroup(ctx fiber.Ctx) error {
 	for i := range expenses {
 		expense := &expenses[i]
 
+		if expense.Settled {
+			continue
+		}
+
 		if expense.PaidByID == userID {
 			totalPaid += expense.Amount
 			expense.Status = expense.Amount
@@ -441,6 +465,7 @@ func UpdateGroup(ctx fiber.Ctx) error {
 		Members      any       `json:"members"`
 		Status       float64   `json:"status"`
 		Expenses     any       `json:"expenses"`
+		Settlements  any       `json:"settlements"`
 	}
 
 	response := GroupWithBalance{
@@ -454,6 +479,7 @@ func UpdateGroup(ctx fiber.Ctx) error {
 		Members:      users,
 		Status:       netBalance,
 		Expenses:     expenses,
+		Settlements:  group.Settlements,
 	}
 
 	return ctx.JSON(fiber.Map{

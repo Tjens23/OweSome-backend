@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"math"
 	"sort"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	database "github.com/tjens23/tabsplit-backend/src/Database"
@@ -44,7 +45,7 @@ type SettlementTransaction struct {
 // @Router /settlements/calculate [post]
 func CalculateSettlements(ctx fiber.Ctx) error {
 	var input SettlementInput
-	
+
 	if err := json.Unmarshal(ctx.Body(), &input); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Cannot parse JSON: " + err.Error(),
@@ -73,7 +74,7 @@ func CalculateSettlements(ctx fiber.Ctx) error {
 	}
 
 	// Calculate debt balances
-	balances, err := calculateDebtBalances(input.GroupID)
+	balances, err := calculateDebtBalances(input.GroupID, database.DB)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to calculate balances: " + err.Error(),
@@ -113,7 +114,7 @@ func CalculateSettlements(ctx fiber.Ctx) error {
 // @Router /settlements/create [post]
 func CreateSettlements(ctx fiber.Ctx) error {
 	var input SettlementInput
-	
+
 	if err := json.Unmarshal(ctx.Body(), &input); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Cannot parse JSON: " + err.Error(),
@@ -141,9 +142,17 @@ func CreateSettlements(ctx fiber.Ctx) error {
 		})
 	}
 
+	tx := database.DB.Begin()
+	if tx.Error != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to start transaction: " + tx.Error.Error(),
+		})
+	}
+
 	// Calculate debt balances
-	balances, err := calculateDebtBalances(input.GroupID)
+	balances, err := calculateDebtBalances(input.GroupID, tx)
 	if err != nil {
+		tx.Rollback()
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to calculate balances: " + err.Error(),
 		})
@@ -153,12 +162,6 @@ func CreateSettlements(ctx fiber.Ctx) error {
 	settlements := calculateOptimalSettlements(balances)
 
 	// Start transaction
-	tx := database.DB.Begin()
-	if tx.Error != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to start transaction: " + tx.Error.Error(),
-		})
-	}
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -210,10 +213,10 @@ func CreateSettlements(ctx fiber.Ctx) error {
 }
 
 // calculateDebtBalances calculates the net balance for each user in a group
-func calculateDebtBalances(groupID uint) ([]DebtBalance, error) {
+func calculateDebtBalances(groupID uint, tx *gorm.DB) ([]DebtBalance, error) {
 	// Get all expenses for the group
 	var expenses []models.Expense
-	if err := database.DB.Where("group_id = ?", groupID).Preload("ExpenseShares").Find(&expenses).Error; err != nil {
+	if err := database.DB.Where("group_id = ? and settled = ?", groupID, false).Preload("ExpenseShares").Find(&expenses).Error; err != nil {
 		return nil, err
 	}
 
@@ -229,6 +232,11 @@ func calculateDebtBalances(groupID uint) ([]DebtBalance, error) {
 			if !share.IsPaid {
 				userBalances[share.UserID] -= share.AmountOwed
 			}
+		}
+
+		expense.Settled = true
+		if err := tx.Save(&expense).Error; err != nil {
+			return nil, err
 		}
 	}
 
@@ -272,7 +280,7 @@ func calculateOptimalSettlements(balances []DebtBalance) []SettlementTransaction
 
 		// Find the most negative and most positive balances
 		var minIndex, maxIndex int = -1, -1
-		
+
 		for i, balance := range workingBalances {
 			if balance.Amount < -0.01 && minIndex == -1 {
 				minIndex = i
@@ -331,11 +339,11 @@ func enrichSettlementsWithUserDetails(settlements []SettlementTransaction) ([]ma
 
 	for _, settlement := range settlements {
 		var payer, receiver models.User
-		
+
 		if err := database.DB.First(&payer, settlement.PayerID).Error; err != nil {
 			return nil, err
 		}
-		
+
 		if err := database.DB.First(&receiver, settlement.ReceiverID).Error; err != nil {
 			return nil, err
 		}
@@ -373,7 +381,7 @@ func enrichSettlementsWithUserDetails(settlements []SettlementTransaction) ([]ma
 // @Router /groups/{id}/settlements [get]
 func GetGroupSettlements(ctx fiber.Ctx) error {
 	groupID := ctx.Params("id")
-	
+
 	// Get user ID from JWT token
 	userID, err := getUserIDFromJWT(ctx)
 	if err != nil {
@@ -423,7 +431,7 @@ func GetGroupSettlements(ctx fiber.Ctx) error {
 // @Router /settlements/{id}/confirm [post]
 func ConfirmSettlement(ctx fiber.Ctx) error {
 	settlementID := ctx.Params("id")
-	
+
 	// Get user ID from JWT token
 	userID, err := getUserIDFromJWT(ctx)
 	if err != nil {
@@ -452,15 +460,18 @@ func ConfirmSettlement(ctx fiber.Ctx) error {
 		})
 	}
 
-	// Update settlement status
-	if err := database.DB.Model(&settlement).Update("is_confirmed", true).Error; err != nil {
+	// Update settlement status and paid date
+	settlement.IsConfirmed = true
+	now := time.Now()
+	settlement.PaidAt = &now
+	if err := database.DB.Save(&settlement).Error; err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to confirm settlement: " + err.Error(),
+			"error": "Failed to update settlement: " + err.Error(),
 		})
 	}
 
 	return ctx.JSON(fiber.Map{
-		"message": "Settlement confirmed successfully",
+		"message":       "Settlement confirmed successfully",
 		"settlement_id": settlement.ID,
 	})
 }
