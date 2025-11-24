@@ -294,18 +294,19 @@ func GetGroup(ctx fiber.Ctx) error {
 	for i := range expenses {
 		expense := &expenses[i]
 
-		if expense.Settled {
-			continue
-		}
-
 		if expense.PaidByID == userID {
-			totalPaid += expense.Amount
+			if !expense.Settled {
+				totalPaid += expense.Amount
+			}
+
 			expense.Status = expense.Amount
 		}
 
 		for _, share := range expense.ExpenseShares {
 			if share.UserID == userID {
-				totalOwed += share.AmountOwed
+				if !expense.Settled {
+					totalOwed += share.AmountOwed
+				}
 				expense.Status -= share.AmountOwed
 			}
 		}
