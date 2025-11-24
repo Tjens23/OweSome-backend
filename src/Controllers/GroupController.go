@@ -671,12 +671,14 @@ func AddMemberToGroup(ctx fiber.Ctx) error {
 		})
 	}
 
-	if err := database.DB.Create(&models.Notification{
-		Message: "You have been added to a new group: " + group.Name,
-		UserID:  input.UserID,
-		New:     true,
-	}).Error; err != nil {
-		println("Could not send notification " + err.Error())
+	if input.UserID != group.AdminID {
+		if err := database.DB.Create(&models.Notification{
+			Message: "You have been added to a new group: " + group.Name,
+			UserID:  input.UserID,
+			New:     true,
+		}).Error; err != nil {
+			println("Could not send notification " + err.Error())
+		}
 	}
 
 	return ctx.JSON(fiber.Map{

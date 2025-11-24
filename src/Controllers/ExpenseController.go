@@ -93,6 +93,9 @@ func CreateExpense(ctx fiber.Ctx) error {
 	database.DB.Preload("PaidBy").Preload("Group").Preload("ExpenseShares.User").First(&expense, expense.ID)
 
 	for _, share := range input.ExpenseShares {
+		if share.UserID == uint(userID) {
+			continue // Don't notify the person who paid
+		}
 		if err := database.DB.Create(&models.Notification{
 			Message: "New expense in group: " + groupMember.Group.Name,
 			UserID:  share.UserID,

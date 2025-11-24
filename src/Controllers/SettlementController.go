@@ -131,7 +131,7 @@ func CreateSettlements(ctx fiber.Ctx) error {
 
 	// Check if user is admin of the group
 	var group models.Group
-	if err := database.DB.Where("id = ? AND admin_id = ?", input.GroupID, userID).First(&group).Error; err != nil {
+	if err := database.DB.Preload("Members.User").Where("id = ? AND admin_id = ?", input.GroupID, userID).First(&group).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return ctx.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"error": "Only group admin can create settlements",
@@ -203,6 +203,20 @@ func CreateSettlements(ctx fiber.Ctx) error {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to get user details: " + err.Error(),
 		})
+	}
+
+	//notify users about new settlements
+	for _, member := range group.Members {
+		if member.User.ID == group.AdminID {
+			continue // Don't notify the admin who created the settlements
+		}
+		if err := database.DB.Create(&models.Notification{
+			Message: "Group " + group.Name + " has been settled. Check your settlements.",
+			UserID:  member.User.ID,
+			New:     true,
+		}).Error; err != nil {
+			println("Could not send notification " + err.Error())
+		}
 	}
 
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{
