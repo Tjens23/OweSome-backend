@@ -10,6 +10,7 @@ func SetupRoutes(app *fiber.App) {
 	// User routes
 	app.Get("/users", controllers.GetUsers)
 	app.Patch("/users/update/:id", controllers.UpdateUser)
+	app.Patch("/users/:id/change-password", controllers.ChangePassword)
 	app.Delete("/users/delete/:id", controllers.DeleteUser)
 	app.Get("/users/:username", controllers.GetUserByUsername)
 
